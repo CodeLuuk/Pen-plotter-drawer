@@ -6,51 +6,17 @@
   <title>Simple Drawing to G-code</title>
   <style>
     body { text-align: center; font-family: Arial, sans-serif; }
-    canvas { 
-      border: 1px solid black; 
-      touch-action: none; 
-      background-image: url('https://raw.githubusercontent.com/CodeLuuk/Pen-plotter-drawer/main/crazy-desktop-xb6y737wot71f8yn.jpg'); /* Set your background image here */
-      background-size: cover; /* Adjust size */
-      background-position: center; /* Center the image */
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 16px;
-      background-color: transparent;
-      border: none;
-      cursor: pointer;
-    }
-    #clearBtn {
-      background-image: url('clearButton.png'); /* Your image for clear button */
-      background-size: contain;
-      background-repeat: no-repeat;
-      width: 100px;
-      height: 40px;
-    }
-    #downloadBtn {
-      background-image: url('downloadButton.png'); /* Your image for download button */
-      background-size: contain;
-      background-repeat: no-repeat;
-      width: 100px;
-      height: 40px;
-    }
-    #eraserBtn {
-      background-image: url('eraserButton.png'); /* Your image for eraser button */
-      background-size: contain;
-      background-repeat: no-repeat;
-      width: 100px;
-      height: 40px;
-    }
+    canvas { border: 1px solid black; touch-action: none; }
+    button { margin-top: 10px; padding: 10px; font-size: 16px; }
   </style>
 </head>
 <body>
   <h1>Draw and Convert to G-code</h1>
   <canvas id="drawCanvas" width="500" height="500"></canvas>
   <br>
-  <button id="clearBtn" onclick="clearCanvas()"></button>
-  <button id="downloadBtn" onclick="downloadGcode()"></button>
-  <button id="eraserBtn" onclick="toggleEraser()"></button>
+  <button onclick="clearCanvas()">Clear</button>
+  <button onclick="downloadGcode()">Download G-code</button>
+  <button onclick="toggleEraser()">Toggle Eraser</button>
 
   <script>
     const canvas = document.getElementById('drawCanvas');
@@ -77,23 +43,25 @@
     }
 
     function startDraw(e) {
+      const { offsetX, offsetY } = getTouchCoordinates(e);
       if (isErasing) {
-        eraseAt(e.offsetX, e.offsetY);
+        eraseAt(offsetX, offsetY);
         return;
       }
       drawing = true;
       currentStroke = [];
-      [lastX, lastY] = [e.offsetX, e.offsetY];
+      [lastX, lastY] = [offsetX, offsetY];
     }
 
     function draw(e) {
       if (!drawing || isErasing) return;
+      const { offsetX, offsetY } = getTouchCoordinates(e);
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
-      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.lineTo(offsetX, offsetY);
       ctx.stroke();
-      currentStroke.push({ x1: lastX, y1: lastY, x2: e.offsetX, y2: e.offsetY });
-      [lastX, lastY] = [e.offsetX, e.offsetY];
+      currentStroke.push({ x1: lastX, y1: lastY, x2: offsetX, y2: offsetY });
+      [lastX, lastY] = [offsetX, offsetY];
     }
 
     function stopDraw() {
@@ -105,6 +73,7 @@
     }
 
     function eraseAt(x, y) {
+      // Remove the stroke if any of its segments are close to (x, y)
       let modified = false;
       for (let i = strokes.length - 1; i >= 0; i--) {
         for (let seg of strokes[i]) {
@@ -162,6 +131,19 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    }
+
+    function getTouchCoordinates(e) {
+      let offsetX = 0, offsetY = 0;
+      if (e.touches) {
+        const rect = canvas.getBoundingClientRect();
+        offsetX = e.touches[0].clientX - rect.left;
+        offsetY = e.touches[0].clientY - rect.top;
+      } else {
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      }
+      return { offsetX, offsetY };
     }
 
     // Event Listeners
