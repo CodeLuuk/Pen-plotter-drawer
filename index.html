@@ -85,18 +85,18 @@
 
     <!-- Tools rechts -->
     <div class="tool-buttons">
-      <img id="penBtn" src="images/pen_inactive.png" alt="Pen" onclick="selectTool('pencil')" />
-      <img id="eraserBtn" src="images/eraser_inactive.png" alt="Eraser" onclick="selectTool('eraser')" />
+      <img id="penBtn" src="image/pen_inactive.png" alt="Pen" onclick="selectTool('pencil')" />
+      <img id="eraserBtn" src="image/eraser_inactive.png" alt="Eraser" onclick="selectTool('eraser')" />
     </div>
 
     <!-- Clear knop linksboven -->
     <div class="corner-button clear-button">
-      <img src="images/clear.png" alt="Clear" onclick="clearCanvas()" />
+      <img src="image/clear.png" alt="Clear" onclick="clearCanvas()" />
     </div>
 
     <!-- Launch knop linksonder -->
     <div class="corner-button launch-button" id="launchBtn">
-      <img id="launchBtnImg" src="images/launch_closed.png" alt="Launch" onclick="toggleLaunchButton()" />
+      <img id="launchBtnImg" src="image/launch_closed.png" alt="Launch" onclick="toggleLaunchButton()" />
     </div>
   </div>
 
@@ -193,11 +193,11 @@
     function selectTool(tool) {
       currentTool = tool;
       if (tool === 'pencil') {
-        document.getElementById('penBtn').src = 'images/pen_active.png';
-        document.getElementById('eraserBtn').src = 'images/eraser_inactive.png';
+        document.getElementById('penBtn').src = 'image/pen_active.png';
+        document.getElementById('eraserBtn').src = 'image/eraser_inactive.png';
       } else if (tool === 'eraser') {
-        document.getElementById('penBtn').src = 'images/pen_inactive.png';
-        document.getElementById('eraserBtn').src = 'images/eraser_active.png';
+        document.getElementById('penBtn').src = 'image/pen_inactive.png';
+        document.getElementById('eraserBtn').src = 'image/eraser_active.png';
       }
     }
 
@@ -238,9 +238,9 @@
     function toggleLaunchButton() {
       const launchBtnImg = document.getElementById('launchBtnImg');
       if (launchOpen) {
-        launchBtnImg.src = 'images/launch_closed.png';
+        launchBtnImg.src = 'image/launch_closed.png';
       } else {
-        launchBtnImg.src = 'images/launch_open.png';
+        launchBtnImg.src = 'image/launch_open.png';
       }
       launchOpen = !launchOpen;
     }
