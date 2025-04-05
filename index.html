@@ -24,23 +24,23 @@
     }
 
     #penButton {
-      top: 200px;
-      right: 60px;
+      top: 80px;
+      right: 24px;
     }
 
     #eraserButton {
-      top: 90px;
-      right: 70px;
+      top: 55px;
+      right: 50px;
     }
 
     #launchButton {
-      bottom: 90px;
-      left: 80px;
+      top: 20px;
+      left: 20px;
     }
 
     #clearButton {
       top: 100px;
-      left: 20px;
+      left: 50px;
     }
 
     #downloadButton {
@@ -49,20 +49,19 @@
     }
 
     #penButton {
-      width: 237px;
-      height: 427px;
-    }
-    
-    #eraserButton {
-      width: 165px;
-      height: 145px;
+      width: 335px;
+      height: 584px;
     }
 
-    #launchButton {
-      width: 250px;
-      height: 263px;
+    #eraserButton {
+      width: 208px;
+      height: 182px;
     }
     
+    #clearButton {
+      width: 230px;
+      height: 230px;
+    }
   </style>
 </head>
 <body>
@@ -71,9 +70,7 @@
   <img id="launchButton" src="image/launch_closed.png" alt="Launch Button">
   <img id="clearButton" src="image/clear.png" alt="Clear Button">
 
-  <!-- Portrait A5 canvas: 420 x 595 px -->
   <canvas id="drawCanvas" width="420" height="595"></canvas>
-
   <button id="downloadButton" onclick="downloadGcode()">Download G-code</button>
 
   <script>
@@ -104,13 +101,7 @@
       eraserButton.src = 'image/eraser_active.png';
     });
 
-    clearButton.addEventListener('click', () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      strokes = [];
-    });
-
     let isLaunching = false;
-
     launchButton.addEventListener('click', async () => {
       if (isLaunching) return;
 
@@ -123,6 +114,22 @@
         launchButton.src = 'image/launch_closed.png';
         isLaunching = false;
       }, 5000);
+    });
+
+    let isClearing = false;
+    clearButton.addEventListener('click', () => {
+      if (isClearing) return;
+
+      isClearing = true;
+      clearButton.src = 'image/clear_pressed.png'; // <-- make sure this image exists!
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes = [];
+
+      setTimeout(() => {
+        clearButton.src = 'image/clear.png';
+        isClearing = false;
+      }, 1000);
     });
 
     function startDraw(e) {
