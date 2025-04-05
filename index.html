@@ -5,34 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Simple Drawing to G-code</title>
   <style>
-    body { text-align: center; font-family: Arial, sans-serif; }
-    canvas { border: 1px solid black; touch-action: none; }
-    button { margin-top: 10px; padding: 10px; font-size: 16px; }
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background-color: #FF4D67; /* Rood-roze achtergrondkleur */
+    }
+    canvas {
+      border: 1px solid black;
+      touch-action: none;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .control-panel {
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      transform: translateY(-50%);
+      text-align: center;
+    }
+    .launch-button {
+      display: none;
+      margin-top: 20px;
+    }
+    .launch-button.open {
+      display: block;
+    }
+    .tools img {
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>Draw and Convert to G-code</h1>
+
+  <!-- Canvas for drawing -->
   <canvas id="drawCanvas" width="500" height="500"></canvas>
-  <br>
-  <button onclick="clearCanvas()">Clear</button>
-  <button onclick="downloadGcode()">Download G-code</button>
-  <button onclick="toggleEraser()">Toggle Eraser</button>
-  <button onclick="sendToSerial()">Send G-code to ItsyBitsy</button>
+
+  <div class="control-panel">
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="downloadGcode()">Download G-code</button>
+    <div class="launch-button" id="launchBtn">
+      <img id="launchBtnImg" src="images/launch_closed.png" alt="Launch Button" onclick="toggleLaunchButton()" />
+    </div>
+    <div class="tools">
+      <img id="penBtn" src="images/pen_inactive.png" alt="Pen" onclick="selectTool('pencil')" />
+      <img id="eraserBtn" src="images/eraser_inactive.png" alt="Eraser" onclick="selectTool('eraser')" />
+    </div>
+  </div>
 
   <script>
     const canvas = document.getElementById('drawCanvas');
     const ctx = canvas.getContext('2d');
     let drawing = false;
     let lastX = 0, lastY = 0;
-
     let strokes = [];
     let currentStroke = null;
-    let isErasing = false;
+    let currentTool = 'pencil'; // Default tool is pencil
     const eraseThreshold = 10;
+    let launchOpen = false;
 
+    // Redraw the entire canvas
     function redrawCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = 'black';
+      ctx.strokeStyle = currentTool === 'pencil' ? 'black' : 'white'; // Pencil or eraser
       for (const stroke of strokes) {
         for (const segment of stroke) {
           ctx.beginPath();
@@ -43,9 +83,10 @@
       }
     }
 
+    // Start drawing or erasing
     function startDraw(e) {
       const { offsetX, offsetY } = getTouchCoordinates(e);
-      if (isErasing) {
+      if (currentTool === 'eraser') {
         eraseAt(offsetX, offsetY);
         return;
       }
@@ -54,8 +95,9 @@
       [lastX, lastY] = [offsetX, offsetY];
     }
 
+    // Draw or erase
     function draw(e) {
-      if (!drawing || isErasing) return;
+      if (!drawing || currentTool === 'eraser') return;
       const { offsetX, offsetY } = getTouchCoordinates(e);
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
@@ -73,6 +115,7 @@
       drawing = false;
     }
 
+    // Erase at the given position
     function eraseAt(x, y) {
       let modified = false;
       for (let i = strokes.length - 1; i >= 0; i--) {
@@ -101,9 +144,16 @@
       return Math.hypot(px - projX, py - projY);
     }
 
-    function toggleEraser() {
-      isErasing = !isErasing;
-      canvas.style.cursor = isErasing ? 'crosshair' : 'default';
+    // Change tool (Pencil or Eraser)
+    function selectTool(tool) {
+      currentTool = tool;
+      if (tool === 'pencil') {
+        document.getElementById('penBtn').src = 'images/pen_active.png';
+        document.getElementById('eraserBtn').src = 'images/eraser_inactive.png';
+      } else if (tool === 'eraser') {
+        document.getElementById('penBtn').src = 'images/pen_inactive.png';
+        document.getElementById('eraserBtn').src = 'images/eraser_active.png';
+      }
     }
 
     function clearCanvas() {
@@ -137,6 +187,7 @@
       document.body.removeChild(a);
     }
 
+    // Serial communication
     async function sendToSerial() {
       try {
         const port = await navigator.serial.requestPort();
@@ -159,6 +210,21 @@
       }
     }
 
+    // Toggle launch button visibility
+    function toggleLaunchButton() {
+      const launchBtn = document.getElementById('launchBtn');
+      const launchBtnImg = document.getElementById('launchBtnImg');
+      
+      if (launchOpen) {
+        launchBtnImg.src = 'images/launch_closed.png';
+      } else {
+        launchBtnImg.src = 'images/launch_open.png';
+      }
+
+      launchOpen = !launchOpen;
+    }
+
+    // Get touch or mouse coordinates
     function getTouchCoordinates(e) {
       let offsetX = 0, offsetY = 0;
       if (e.touches && e.touches.length > 0) {
