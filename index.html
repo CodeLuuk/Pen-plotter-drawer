@@ -103,17 +103,20 @@
       strokes = [];
     });
 
-    let launchState = 0;
+    let isLaunching = false;
+
     launchButton.addEventListener('click', async () => {
-      if (launchState === 0) {
-        launchButton.src = 'image/launch_open.png';
-        launchState = 1;
-      } else if (launchState === 1) {
-        launchButton.src = 'image/launch_pressed.png';
-        await sendToSerial();
-        launchState = 0;
+      if (isLaunching) return;
+
+      isLaunching = true;
+      launchButton.src = 'image/launch_pressed.png';
+
+      await sendToSerial();
+
+      setTimeout(() => {
         launchButton.src = 'image/launch_closed.png';
-      }
+        isLaunching = false;
+      }, 5000);
     });
 
     function startDraw(e) {
