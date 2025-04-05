@@ -6,36 +6,73 @@
   <title>Simple Drawing to G-code</title>
   <style>
     body {
-      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #FF4D67;
       font-family: Arial, sans-serif;
-      background-color: #FF4D67; /* Rood-roze achtergrondkleur */
     }
+
+    h1 {
+      text-align: center;
+      margin-top: 20px;
+      color: white;
+    }
+
+    .canvas-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px auto;
+      width: fit-content;
+    }
+
     canvas {
       border: 1px solid black;
       touch-action: none;
     }
-    button {
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 16px;
-    }
-    .control-panel {
+
+    .tool-buttons {
       position: absolute;
+      right: -70px;
       top: 50%;
-      left: 20px;
       transform: translateY(-50%);
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
-    .launch-button {
-      display: none;
-      margin-top: 20px;
-    }
-    .launch-button.open {
-      display: block;
-    }
-    .tools img {
+
+    .tool-buttons img,
+    .corner-button img {
       width: 50px;
       height: 50px;
+      cursor: pointer;
+      object-fit: contain;
+    }
+
+    .corner-button {
+      position: absolute;
+    }
+
+    .clear-button {
+      top: -60px;
+      left: 0;
+    }
+
+    .launch-button {
+      bottom: -60px;
+      left: 0;
+    }
+
+    .bottom-buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
       cursor: pointer;
     }
   </style>
@@ -43,19 +80,29 @@
 <body>
   <h1>Draw and Convert to G-code</h1>
 
-  <!-- Canvas for drawing -->
-  <canvas id="drawCanvas" width="500" height="500"></canvas>
+  <div class="canvas-container">
+    <canvas id="drawCanvas" width="352" height="500"></canvas> <!-- A5 ratio -->
 
-  <div class="control-panel">
-    <button onclick="clearCanvas()">Clear</button>
-    <button onclick="downloadGcode()">Download G-code</button>
-    <div class="launch-button" id="launchBtn">
-      <img id="launchBtnImg" src="images/launch_closed.png" alt="Launch Button" onclick="toggleLaunchButton()" />
-    </div>
-    <div class="tools">
+    <!-- Tools rechts -->
+    <div class="tool-buttons">
       <img id="penBtn" src="images/pen_inactive.png" alt="Pen" onclick="selectTool('pencil')" />
       <img id="eraserBtn" src="images/eraser_inactive.png" alt="Eraser" onclick="selectTool('eraser')" />
     </div>
+
+    <!-- Clear knop linksboven -->
+    <div class="corner-button clear-button">
+      <img src="images/clear.png" alt="Clear" onclick="clearCanvas()" />
+    </div>
+
+    <!-- Launch knop linksonder -->
+    <div class="corner-button launch-button" id="launchBtn">
+      <img id="launchBtnImg" src="images/launch_closed.png" alt="Launch" onclick="toggleLaunchButton()" />
+    </div>
+  </div>
+
+  <!-- Download-knop onder canvas -->
+  <div class="bottom-buttons">
+    <button onclick="downloadGcode()">Download G-code</button>
   </div>
 
   <script>
@@ -65,14 +112,16 @@
     let lastX = 0, lastY = 0;
     let strokes = [];
     let currentStroke = null;
-    let currentTool = 'pencil'; // Default tool is pencil
+    let currentTool = 'pencil';
     const eraseThreshold = 10;
     let launchOpen = false;
 
-    // Redraw the entire canvas
+    const A5_WIDTH_MM = 148;
+    const A5_HEIGHT_MM = 210;
+
     function redrawCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = currentTool === 'pencil' ? 'black' : 'black'; // Pencil or eraser
+      ctx.strokeStyle = 'black';
       for (const stroke of strokes) {
         for (const segment of stroke) {
           ctx.beginPath();
@@ -83,7 +132,6 @@
       }
     }
 
-    // Start drawing or erasing
     function startDraw(e) {
       const { offsetX, offsetY } = getTouchCoordinates(e);
       if (currentTool === 'eraser') {
@@ -95,7 +143,6 @@
       [lastX, lastY] = [offsetX, offsetY];
     }
 
-    // Draw or erase
     function draw(e) {
       if (!drawing || currentTool === 'eraser') return;
       const { offsetX, offsetY } = getTouchCoordinates(e);
@@ -115,7 +162,6 @@
       drawing = false;
     }
 
-    // Erase at the given position
     function eraseAt(x, y) {
       let modified = false;
       for (let i = strokes.length - 1; i >= 0; i--) {
@@ -144,11 +190,10 @@
       return Math.hypot(px - projX, py - projY);
     }
 
-    // Change tool (Pencil or Eraser)
     function selectTool(tool) {
       currentTool = tool;
       if (tool === 'pencil') {
-        document.getElementById('penBtn').src = 'image/pngtree-black-and-gold-fountain-pen-png-image_11927367.png';
+        document.getElementById('penBtn').src = 'images/pen_active.png';
         document.getElementById('eraserBtn').src = 'images/eraser_inactive.png';
       } else if (tool === 'eraser') {
         document.getElementById('penBtn').src = 'images/pen_inactive.png';
@@ -162,14 +207,17 @@
     }
 
     function generateGcode() {
+      const scaleX = A5_WIDTH_MM / canvas.width;
+      const scaleY = A5_HEIGHT_MM / canvas.height;
+
       let gcode = "G21 ; Set units to mm\nG90 ; Absolute positioning\nG0 Z5 ; Lift pen\n";
       for (const stroke of strokes) {
         if (stroke.length === 0) continue;
         const first = stroke[0];
-        gcode += `G0 X${first.x1.toFixed(2)} Y${first.y1.toFixed(2)}\n`;
+        gcode += `G0 X${(first.x1 * scaleX).toFixed(2)} Y${(first.y1 * scaleY).toFixed(2)}\n`;
         gcode += "G1 Z0 ; Lower pen\n";
         for (const segment of stroke) {
-          gcode += `G1 X${segment.x2.toFixed(2)} Y${segment.y2.toFixed(2)} F1000\n`;
+          gcode += `G1 X${(segment.x2 * scaleX).toFixed(2)} Y${(segment.y2 * scaleY).toFixed(2)} F1000\n`;
         }
         gcode += "G0 Z5 ; Lift pen\n";
       }
@@ -187,54 +235,22 @@
       document.body.removeChild(a);
     }
 
-    // Serial communication
-    async function sendToSerial() {
-      try {
-        const port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 115200 });
-
-        const encoder = new TextEncoderStream();
-        const writableStreamClosed = encoder.readable.pipeTo(port.writable);
-        const writer = encoder.writable.getWriter();
-
-        const gcode = generateGcode();
-        await writer.write(gcode);
-        writer.close();
-        await writableStreamClosed;
-        await port.close();
-
-        alert("G-code sent to ItsyBitsy M4!");
-      } catch (err) {
-        console.error("Serial Error:", err);
-        alert("Failed to send G-code: " + err.message);
-      }
-    }
-
-    // Toggle launch button visibility
     function toggleLaunchButton() {
-      const launchBtn = document.getElementById('launchBtn');
       const launchBtnImg = document.getElementById('launchBtnImg');
-      
       if (launchOpen) {
         launchBtnImg.src = 'images/launch_closed.png';
       } else {
         launchBtnImg.src = 'images/launch_open.png';
       }
-
       launchOpen = !launchOpen;
     }
 
-    // Get touch or mouse coordinates
     function getTouchCoordinates(e) {
       let offsetX = 0, offsetY = 0;
       if (e.touches && e.touches.length > 0) {
         const rect = canvas.getBoundingClientRect();
         offsetX = e.touches[0].clientX - rect.left;
         offsetY = e.touches[0].clientY - rect.top;
-      } else if (e.changedTouches && e.changedTouches.length > 0) {
-        const rect = canvas.getBoundingClientRect();
-        offsetX = e.changedTouches[0].clientX - rect.left;
-        offsetY = e.changedTouches[0].clientY - rect.top;
       } else {
         offsetX = e.offsetX;
         offsetY = e.offsetY;
@@ -242,13 +258,12 @@
       return { offsetX, offsetY };
     }
 
-    // Mouse events
+    // Events
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDraw);
     canvas.addEventListener('mouseout', stopDraw);
 
-    // Touch events
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       startDraw(e);
