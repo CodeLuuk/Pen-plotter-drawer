@@ -3,138 +3,125 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Simple Drawing to G-code</title>
+  <title>Draw and Convert to G-code</title>
   <style>
     body {
+      background-color: #ffb6c1; /* soft red-pink background */
       margin: 0;
-      padding: 0;
-      background-color: #FF4D67;
       font-family: Arial, sans-serif;
     }
 
-    h1 {
-      text-align: center;
-      margin-top: 20px;
-      color: white;
-    }
-
-    .canvas-container {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 20px auto;
-      width: fit-content;
-    }
-
     canvas {
-      border: 1px solid black;
-      touch-action: none;
+      display: block;
+      margin: 80px auto 30px;
+      border: 8px solid #000;
+      background: white;
     }
 
-    .tool-buttons {
+    #penButton, #eraserButton, #launchButton, #clearButton {
       position: absolute;
-      right: -70px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .tool-buttons img,
-    .corner-button img {
-      width: 50px;
-      height: 50px;
-      cursor: pointer;
-      object-fit: contain;
-    }
-
-    .corner-button {
-      position: absolute;
-    }
-
-    .clear-button {
-      top: -60px;
-      left: 0;
-    }
-
-    .launch-button {
-      bottom: -60px;
-      left: 0;
-    }
-
-    .bottom-buttons {
-      text-align: center;
-      margin-top: 20px;
-    }
-
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
       cursor: pointer;
     }
+
+    #penButton {
+      top: 10px;
+      right: 50px;
+    }
+
+    #eraserButton {
+      top: 150px;
+      right: 20px;
+    }
+
+    #launchButton {
+      top: 20px;
+      left: 20px;
+    }
+
+    #clearButton {
+      top: 100px;
+      left: 20px;
+    }
+
+    #downloadButton {
+      display: block;
+      margin: 0 auto;
+    }
+
+    #penButton, #eraserButton {
+      width: 120px;
+      height: 120px;
+    }
+
   </style>
 </head>
 <body>
-  <h1>Draw and Convert to G-code</h1>
+  <!-- Tool Icons -->
+  <img id="penButton" src="image/pen_active.png" alt="Pen Tool">
+  <img id="eraserButton" src="image/eraser_inactive.png" alt="Eraser Tool">
+  <img id="launchButton" src="image/launch_closed.png" alt="Launch Button">
+  <img id="clearButton" src="image/clear.png" alt="Clear Button">
 
-  <div class="canvas-container">
-    <canvas id="drawCanvas" width="352" height="500"></canvas> <!-- A5 ratio -->
+  <!-- Canvas -->
+  <canvas id="drawCanvas" width="700" height="494"></canvas>
 
-    <!-- Tools rechts -->
-    <div class="tool-buttons">
-      <img id="penBtn" src="image/pen_inactive.png" alt="Pen" onclick="selectTool('pencil')" />
-      <img id="eraserBtn" src="image/eraser_inactive.png" alt="Eraser" onclick="selectTool('eraser')" />
-    </div>
-
-    <!-- Clear knop linksboven -->
-    <div class="corner-button clear-button">
-      <img src="image/clear.png" alt="Clear" onclick="clearCanvas()" />
-    </div>
-
-    <!-- Launch knop linksonder -->
-    <div class="corner-button launch-button" id="launchBtn">
-      <img id="launchBtnImg" src="image/launch_closed.png" alt="Launch" onclick="toggleLaunchButton()" />
-    </div>
-  </div>
-
-  <!-- Download-knop onder canvas -->
-  <div class="bottom-buttons">
-    <button onclick="downloadGcode()">Download G-code</button>
-  </div>
+  <!-- Download Button -->
+  <button id="downloadButton" onclick="downloadGcode()">Download G-code</button>
 
   <script>
     const canvas = document.getElementById('drawCanvas');
     const ctx = canvas.getContext('2d');
     let drawing = false;
     let lastX = 0, lastY = 0;
+
     let strokes = [];
     let currentStroke = null;
-    let currentTool = 'pencil';
-    const eraseThreshold = 10;
-    let launchOpen = false;
+    let isErasing = false;
 
-    const A5_WIDTH_MM = 148;
-    const A5_HEIGHT_MM = 210;
+    const penButton = document.getElementById('penButton');
+    const eraserButton = document.getElementById('eraserButton');
+    const launchButton = document.getElementById('launchButton');
+    const clearButton = document.getElementById('clearButton');
 
-    function redrawCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Pen tool
+    penButton.addEventListener('click', () => {
+      isErasing = false;
+      penButton.src = 'image/pen_active.png';
+      eraserButton.src = 'image/eraser_inactive.png';
       ctx.strokeStyle = 'black';
-      for (const stroke of strokes) {
-        for (const segment of stroke) {
-          ctx.beginPath();
-          ctx.moveTo(segment.x1, segment.y1);
-          ctx.lineTo(segment.x2, segment.y2);
-          ctx.stroke();
-        }
-      }
-    }
+    });
 
+    // Eraser tool
+    eraserButton.addEventListener('click', () => {
+      isErasing = true;
+      penButton.src = 'image/pen_inactive.png';
+      eraserButton.src = 'image/eraser_active.png';
+    });
+
+    // Clear
+    clearButton.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes = [];
+    });
+
+    // Launch sequence
+    let launchState = 0;
+    launchButton.addEventListener('click', async () => {
+      if (launchState === 0) {
+        launchButton.src = 'image/launch_open.png';
+        launchState = 1;
+      } else if (launchState === 1) {
+        launchButton.src = 'image/launch_pressed.png';
+        await sendToSerial();
+        launchState = 0;
+        launchButton.src = 'image/launch_closed.png';
+      }
+    });
+
+    // Drawing logic
     function startDraw(e) {
       const { offsetX, offsetY } = getTouchCoordinates(e);
-      if (currentTool === 'eraser') {
+      if (isErasing) {
         eraseAt(offsetX, offsetY);
         return;
       }
@@ -144,7 +131,7 @@
     }
 
     function draw(e) {
-      if (!drawing || currentTool === 'eraser') return;
+      if (!drawing || isErasing) return;
       const { offsetX, offsetY } = getTouchCoordinates(e);
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
@@ -163,6 +150,7 @@
     }
 
     function eraseAt(x, y) {
+      const eraseThreshold = 10;
       let modified = false;
       for (let i = strokes.length - 1; i >= 0; i--) {
         for (let seg of strokes[i]) {
@@ -175,6 +163,19 @@
         }
       }
       if (modified) redrawCanvas();
+    }
+
+    function redrawCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'black';
+      for (const stroke of strokes) {
+        for (const segment of stroke) {
+          ctx.beginPath();
+          ctx.moveTo(segment.x1, segment.y1);
+          ctx.lineTo(segment.x2, segment.y2);
+          ctx.stroke();
+        }
+      }
     }
 
     function pointToSegmentDistance(px, py, seg) {
@@ -190,34 +191,33 @@
       return Math.hypot(px - projX, py - projY);
     }
 
-    function selectTool(tool) {
-      currentTool = tool;
-      if (tool === 'pencil') {
-        document.getElementById('penBtn').src = 'image/pen_active.png';
-        document.getElementById('eraserBtn').src = 'image/eraser_inactive.png';
-      } else if (tool === 'eraser') {
-        document.getElementById('penBtn').src = 'image/pen_inactive.png';
-        document.getElementById('eraserBtn').src = 'image/eraser_active.png';
+    function getTouchCoordinates(e) {
+      let offsetX = 0, offsetY = 0;
+      if (e.touches && e.touches.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        offsetX = e.touches[0].clientX - rect.left;
+        offsetY = e.touches[0].clientY - rect.top;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        offsetX = e.changedTouches[0].clientX - rect.left;
+        offsetY = e.changedTouches[0].clientY - rect.top;
+      } else {
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
       }
+      return { offsetX, offsetY };
     }
 
-    function clearCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      strokes = [];
-    }
-
+    // G-code
     function generateGcode() {
-      const scaleX = A5_WIDTH_MM / canvas.width;
-      const scaleY = A5_HEIGHT_MM / canvas.height;
-
       let gcode = "G21 ; Set units to mm\nG90 ; Absolute positioning\nG0 Z5 ; Lift pen\n";
       for (const stroke of strokes) {
         if (stroke.length === 0) continue;
         const first = stroke[0];
-        gcode += `G0 X${(first.x1 * scaleX).toFixed(2)} Y${(first.y1 * scaleY).toFixed(2)}\n`;
+        gcode += `G0 X${first.x1.toFixed(2)} Y${first.y1.toFixed(2)}\n`;
         gcode += "G1 Z0 ; Lower pen\n";
         for (const segment of stroke) {
-          gcode += `G1 X${(segment.x2 * scaleX).toFixed(2)} Y${(segment.y2 * scaleY).toFixed(2)} F1000\n`;
+          gcode += `G1 X${segment.x2.toFixed(2)} Y${segment.y2.toFixed(2)} F1000\n`;
         }
         gcode += "G0 Z5 ; Lift pen\n";
       }
@@ -235,27 +235,26 @@
       document.body.removeChild(a);
     }
 
-    function toggleLaunchButton() {
-      const launchBtnImg = document.getElementById('launchBtnImg');
-      if (launchOpen) {
-        launchBtnImg.src = 'image/launch_closed.png';
-      } else {
-        launchBtnImg.src = 'image/launch_open.png';
-      }
-      launchOpen = !launchOpen;
-    }
+    async function sendToSerial() {
+      try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
 
-    function getTouchCoordinates(e) {
-      let offsetX = 0, offsetY = 0;
-      if (e.touches && e.touches.length > 0) {
-        const rect = canvas.getBoundingClientRect();
-        offsetX = e.touches[0].clientX - rect.left;
-        offsetY = e.touches[0].clientY - rect.top;
-      } else {
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
+        const encoder = new TextEncoderStream();
+        const writableStreamClosed = encoder.readable.pipeTo(port.writable);
+        const writer = encoder.writable.getWriter();
+
+        const gcode = generateGcode();
+        await writer.write(gcode);
+        writer.close();
+        await writableStreamClosed;
+        await port.close();
+
+        alert("G-code sent to ItsyBitsy M4!");
+      } catch (err) {
+        console.error("Serial Error:", err);
+        alert("Failed to send G-code: " + err.message);
       }
-      return { offsetX, offsetY };
     }
 
     // Events
