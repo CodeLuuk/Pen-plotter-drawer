@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Draw and Convert to G-code</title>
+  <title>Draw and Convert to G-code (A5)</title>
   <style>
     body {
-      background-color: #ffb6c1; /* soft red-pink background */
+      background-color: #ffb6c1;
       margin: 0;
       font-family: Arial, sans-serif;
     }
@@ -24,7 +24,7 @@
     }
 
     #penButton {
-      top: 100px;
+      top: 70px;
       right: 50px;
     }
 
@@ -45,27 +45,24 @@
 
     #downloadButton {
       display: block;
-      margin: 0 auto;
+      margin: 0 auto 40px;
     }
 
     #penButton, #eraserButton {
-      width: 335px;
-      height: 584px;
+      width: 50px;
+      height: 50px;
     }
-
   </style>
 </head>
 <body>
-  <!-- Tool Icons -->
   <img id="penButton" src="image/pen_active.png" alt="Pen Tool">
   <img id="eraserButton" src="image/eraser_inactive.png" alt="Eraser Tool">
   <img id="launchButton" src="image/launch_closed.png" alt="Launch Button">
   <img id="clearButton" src="image/clear.png" alt="Clear Button">
 
-  <!-- Canvas -->
-  <canvas id="drawCanvas" width="700" height="494"></canvas>
+  <!-- Portrait A5 canvas: 420 x 595 px -->
+  <canvas id="drawCanvas" width="420" height="595"></canvas>
 
-  <!-- Download Button -->
   <button id="downloadButton" onclick="downloadGcode()">Download G-code</button>
 
   <script>
@@ -83,7 +80,6 @@
     const launchButton = document.getElementById('launchButton');
     const clearButton = document.getElementById('clearButton');
 
-    // Pen tool
     penButton.addEventListener('click', () => {
       isErasing = false;
       penButton.src = 'image/pen_active.png';
@@ -91,20 +87,17 @@
       ctx.strokeStyle = 'black';
     });
 
-    // Eraser tool
     eraserButton.addEventListener('click', () => {
       isErasing = true;
       penButton.src = 'image/pen_inactive.png';
       eraserButton.src = 'image/eraser_active.png';
     });
 
-    // Clear
     clearButton.addEventListener('click', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       strokes = [];
     });
 
-    // Launch sequence
     let launchState = 0;
     launchButton.addEventListener('click', async () => {
       if (launchState === 0) {
@@ -118,7 +111,6 @@
       }
     });
 
-    // Drawing logic
     function startDraw(e) {
       const { offsetX, offsetY } = getTouchCoordinates(e);
       if (isErasing) {
@@ -208,16 +200,17 @@
       return { offsetX, offsetY };
     }
 
-    // G-code
     function generateGcode() {
+      const scaleX = 148 / canvas.width;
+      const scaleY = 210 / canvas.height;
       let gcode = "G21 ; Set units to mm\nG90 ; Absolute positioning\nG0 Z5 ; Lift pen\n";
       for (const stroke of strokes) {
         if (stroke.length === 0) continue;
         const first = stroke[0];
-        gcode += `G0 X${first.x1.toFixed(2)} Y${first.y1.toFixed(2)}\n`;
+        gcode += `G0 X${(first.x1 * scaleX).toFixed(2)} Y${(first.y1 * scaleY).toFixed(2)}\n`;
         gcode += "G1 Z0 ; Lower pen\n";
         for (const segment of stroke) {
-          gcode += `G1 X${segment.x2.toFixed(2)} Y${segment.y2.toFixed(2)} F1000\n`;
+          gcode += `G1 X${(segment.x2 * scaleX).toFixed(2)} Y${(segment.y2 * scaleY).toFixed(2)} F1000\n`;
         }
         gcode += "G0 Z5 ; Lift pen\n";
       }
@@ -229,7 +222,7 @@
       const blob = new Blob([gcode], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'drawing.gcode';
+      a.download = 'drawing_a5.gcode';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -250,14 +243,13 @@
         await writableStreamClosed;
         await port.close();
 
-        alert("G-code sent to ItsyBitsy M4!");
+        alert("G-code sent to device!");
       } catch (err) {
         console.error("Serial Error:", err);
         alert("Failed to send G-code: " + err.message);
       }
     }
 
-    // Events
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDraw);
