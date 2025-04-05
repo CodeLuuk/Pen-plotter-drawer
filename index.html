@@ -73,7 +73,6 @@
     }
 
     function eraseAt(x, y) {
-      // Remove the stroke if any of its segments are close to (x, y)
       let modified = false;
       for (let i = strokes.length - 1; i >= 0; i--) {
         for (let seg of strokes[i]) {
@@ -135,10 +134,14 @@
 
     function getTouchCoordinates(e) {
       let offsetX = 0, offsetY = 0;
-      if (e.touches) {
+      if (e.touches && e.touches.length > 0) {
         const rect = canvas.getBoundingClientRect();
         offsetX = e.touches[0].clientX - rect.left;
         offsetY = e.touches[0].clientY - rect.top;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        offsetX = e.changedTouches[0].clientX - rect.left;
+        offsetY = e.changedTouches[0].clientY - rect.top;
       } else {
         offsetX = e.offsetX;
         offsetY = e.offsetY;
@@ -146,18 +149,27 @@
       return { offsetX, offsetY };
     }
 
-    // Event Listeners
+    // Mouse events
     canvas.addEventListener('mousedown', startDraw);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDraw);
     canvas.addEventListener('mouseout', stopDraw);
 
-    canvas.addEventListener('touchstart', e => startDraw(e.touches[0]));
+    // Touch events with proper handling
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      startDraw(e);
+    }, { passive: false });
+
     canvas.addEventListener('touchmove', e => {
       e.preventDefault();
-      draw(e.touches[0]);
-    });
-    canvas.addEventListener('touchend', stopDraw);
+      draw(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+      e.preventDefault();
+      stopDraw(e);
+    }, { passive: false });
   </script>
 </body>
 </html>
