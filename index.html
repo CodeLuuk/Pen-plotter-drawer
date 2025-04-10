@@ -139,12 +139,21 @@
     function draw(e) {
       if (!drawing || isErasing) return;
       const { offsetX, offsetY } = getTouchCoordinates(e);
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(offsetX, offsetY);
-      ctx.stroke();
-      currentStroke.push({ x1: lastX, y1: lastY, x2: offsetX, y2: offsetY });
-      [lastX, lastY] = [offsetX, offsetY];
+
+      const dx = offsetX - lastX;
+      const dy = offsetY - lastY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Only store and draw segments longer than 5 pixels (~0.5 cm)
+      if (distance >= 5) {
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(offsetX, offsetY);
+        ctx.stroke();
+
+        currentStroke.push({ x1: lastX, y1: lastY, x2: offsetX, y2: offsetY });
+        [lastX, lastY] = [offsetX, offsetY];
+      }
     }
 
     function stopDraw() {
