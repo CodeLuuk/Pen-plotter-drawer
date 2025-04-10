@@ -6,7 +6,8 @@
   <title>Draw and Convert to G-code (A5)</title>
   <style>
     body {
-      background-color: #b27075;
+      background-color: #b27750
+      ;
       margin: 0;
       font-family: Arial, sans-serif;
     }
@@ -144,8 +145,9 @@
       const dy = offsetY - lastY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Only store and draw segments longer than 5 pixels (~0.5 cm)
-      if (distance >= 5) {
+      const minPixelLength = 14; // ~5 mm in canvas pixels
+
+      if (distance >= minPixelLength) {
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(offsetX, offsetY);
