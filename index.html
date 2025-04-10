@@ -6,7 +6,7 @@
   <title>Draw and Convert to G-code (A5)</title>
   <style>
     body {
-      background-color: #b27750;
+      background-color: #b27075;
       margin: 0;
       font-family: Arial, sans-serif;
     }
@@ -225,21 +225,21 @@
         const startX = (first.x1 * scaleX).toFixed(2);
         const startY = (first.y1 * scaleY).toFixed(2);
 
-        gcode += M300 S90 ; Pen up\n;
-        gcode += G4 P300 ; Wait for servo\n;
-        gcode += G0 X${startX} Y${startY} F3000 ; Move to start\n;
+        gcode += `M300 S90 ; Pen up\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
+        gcode += `G0 X${startX} Y${startY} F3000 ; Move to start\n`;
 
-        gcode += M300 S50 ; Pen down\n;
-        gcode += G4 P300 ; Wait for servo\n;
+        gcode += `M300 S50 ; Pen down\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
 
         for (const segment of stroke) {
           const x = (segment.x2 * scaleX).toFixed(2);
           const y = (segment.y2 * scaleY).toFixed(2);
-          gcode += G1 X${x} Y${y} F1000\n;
+          gcode += `G1 X${x} Y${y} F1000\n`;
         }
 
-        gcode += M300 S90 ; Pen up\n;
-        gcode += G4 P300 ; Wait for servo\n;
+        gcode += `M300 S90 ; Pen up\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
       }
 
       gcode += "G0 Z5 ; Final pen up\n";
@@ -300,6 +300,4 @@
     }, { passive: false });
   </script>
 </body>
-</html> 
-
-
+</html>
