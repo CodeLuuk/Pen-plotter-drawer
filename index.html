@@ -6,7 +6,7 @@
   <title>Draw and Convert to G-code (A5)</title>
   <style>
     body {
-      background-color: #b27750;
+      background-color: #b27075;
       margin: 0;
       font-family: Arial, sans-serif;
     }
@@ -170,24 +170,40 @@
     }
 
     function generateGcode() {
-      const scaleX = 148 / canvas.width;
-      const scaleY = 210 / canvas.height;
+      // Use the smaller scale to maintain aspect ratio
+      const targetWidth = 148; // mm (A5 width)
+      const targetHeight = 210; // mm (A5 height)
+      const scale = Math.min(targetWidth / canvas.width, targetHeight / canvas.height);
+
+      // Optionally center the drawing
+      const offsetX = ((targetWidth - canvas.width * scale) / 2).toFixed(2);
+      const offsetY = ((targetHeight - canvas.height * scale) / 2).toFixed(2);
+
       let gcode = "";
 
       for (const stroke of strokes) {
         if (stroke.length === 0) continue;
-        const first = stroke[0];
-        const startX = (first.x1 * scaleX).toFixed(2);
-        const startY = (first.y1 * scaleY).toFixed(2);
 
         gcode += `M300 S50\n`; // Pen up
+
+        const first = stroke[0];
+        const startX = (first.x1 * scale + parseFloat(offsetX)).toFixed(2);
+        const startY = (first.y1 * scale + parseFloat(offsetY)).toFixed(2);
         gcode += `G1 X${startX} Y${startY}\n`;
+
         gcode += `M300 S30\n`; // Pen down
 
         for (const segment of stroke) {
-          const x = (segment.x2 * scaleX).toFixed(2);
-          const y = (segment.y2 * scaleY).toFixed(2);
+          const x = (segment.x2 * scale + parseFloat(offsetX)).toFixed(2);
+          const y = (segment.y2 * scale + parseFloat(offsetY)).toFixed(2);
           gcode += `G1 X${x} Y${y}\n`;
+        }
+      }
+
+      gcode += `M300 S50\n`; // Final pen up
+      return gcode;
+    }
+
         }
       }
 
