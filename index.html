@@ -218,16 +218,30 @@
       const scaleX = 148 / canvas.width;
       const scaleY = 210 / canvas.height;
       let gcode = "G21 ; Set units to mm\nG90 ; Absolute positioning\nG0 Z5 ; Lift pen\n";
+
       for (const stroke of strokes) {
         if (stroke.length === 0) continue;
         const first = stroke[0];
-        gcode += `G0 X${(first.x1 * scaleX).toFixed(2)} Y${(first.y1 * scaleY).toFixed(2)}\n`;
-        gcode += "M300 S30 ; Pen down\n";
+        const startX = (first.x1 * scaleX).toFixed(2);
+        const startY = (first.y1 * scaleY).toFixed(2);
+
+        gcode += `M300 S90 ; Pen up\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
+        gcode += `G0 X${startX} Y${startY} F3000 ; Move to start\n`;
+
+        gcode += `M300 S50 ; Pen down\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
+
         for (const segment of stroke) {
-          gcode += `G1 X${(segment.x2 * scaleX).toFixed(2)} Y${(segment.y2 * scaleY).toFixed(2)} F1000\n`;
+          const x = (segment.x2 * scaleX).toFixed(2);
+          const y = (segment.y2 * scaleY).toFixed(2);
+          gcode += `G1 X${x} Y${y} F1000\n`;
         }
-        gcode += "M300 S50 ; Pen up\n";
+
+        gcode += `M300 S90 ; Pen up\n`;
+        gcode += `G4 P300 ; Wait for servo\n`;
       }
+
       gcode += "G0 Z5 ; Final pen up\n";
       return gcode;
     }
